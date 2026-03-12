@@ -12,12 +12,15 @@ export default function Header() {
         </Link>
         
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-300">
+          <Link href="/schedule" className="hover:text-white transition-colors flex items-center gap-1 text-blue-400 font-bold">
+            <CalendarDays size={16} /> 일정/결과
+          </Link>
+          <div className="h-4 w-px bg-gray-700 mx-1"></div>
           <Link href="/live" className="hover:text-white transition-colors flex items-center gap-1">
             <Activity size={16} /> 라이브 센터
           </Link>
-          <div className="h-4 w-px bg-gray-700 mx-1"></div>
           <Link href="/records" className="hover:text-white transition-colors flex items-center gap-1">
-            <CalendarDays size={16} /> 역대 기록실
+            <Trophy size={16} /> 역대 기록실
           </Link>
           <Link href="/standings" className="hover:text-white transition-colors flex items-center gap-1">
             <Trophy size={16} /> 리그 순위
