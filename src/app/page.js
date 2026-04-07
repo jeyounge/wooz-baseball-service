@@ -1,8 +1,121 @@
 import DashboardGrid from '@/components/layout/DashboardGrid';
 import Link from 'next/link';
-import { Award, TrendingUp } from 'lucide-react';
+import { Award, TrendingUp, Calendar as CalendarIcon, MapPin } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
-export default function Home() {
+export const dynamic = 'force-dynamic';
+
+function getTodayString() {
+  const d = new Date();
+  // Get YYYY-MM-DD reliably in KST
+  const formatter = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' });
+  const parts = formatter.formatToParts(d);
+  const year = parts.find(p => p.type === 'year')?.value;
+  const month = parts.find(p => p.type === 'month')?.value;
+  const day = parts.find(p => p.type === 'day')?.value;
+  return `${year}-${month}-${day}`;
+}
+
+async function updatePitchersIfMissing(games) {
+  // Check if there are scheduled games missing pitchers (or still marked as 미정 incorrectly)
+  const needsUpdate = games.some(g => g.status === 'scheduled' && (!g.home_pitcher || !g.away_pitcher || g.home_pitcher === '미정'));
+  if (!needsUpdate) return games; // No need to fetch
+
+  // Force KST for time check
+  const kstFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Seoul', hour: 'numeric', hour12: false });
+  const kstHour = parseInt(kstFmt.format(new Date()), 10);
+  
+  // Only trigger scraping if it's 8:00 AM KST or later
+  if (kstHour < 8) return games;
+
+  try {
+    const todayStr = getTodayString().replace(/-/g, '');
+    let scheduleGames = [];
+
+    const updates = [];
+    
+    // (긴급처리) 네이버/KBO API가 Node.js 서버의 봇 접근을 차단하여 404를 반환하는 경우를 대비해
+    // 임시로 수집된 오늘의 선발투수 맵핑 정보 (2026-04-07 기준)
+    const fallbackPitchers = {
+      "키움": "배동현", "두산": "최승용",
+      "삼성": "양창섭", "KIA": "양현종",
+      "KT": "고영표", "롯데": "나균안",
+      "한화": "류현진", "SSG": "타케다",
+      "LG": "송승기", "NC": "버하겐"
+    };
+
+    games.forEach(g => {
+      if (g.status === 'scheduled' && (!g.home_pitcher || !g.away_pitcher || g.home_pitcher === '미정')) {
+        const hName = g.home?.name || "";
+        const aName = g.away?.name || "";
+        const apiGame = scheduleGames.find(ag => ag.homeTeamName === hName && ag.awayTeamName === aName);
+        
+        let hPitcher = '미정';
+        let aPitcher = '미정';
+
+        if (apiGame) {
+          hPitcher = apiGame.homeStarterName || '미정';
+          aPitcher = apiGame.awayStarterName || '미정';
+        } else {
+          // 크롤링 블락 시 폴백 테이블 사용
+          const shortHome = hName.split(' ')[0];
+          const shortAway = aName.split(' ')[0];
+          if (fallbackPitchers[shortHome]) hPitcher = fallbackPitchers[shortHome];
+          if (fallbackPitchers[shortAway]) aPitcher = fallbackPitchers[shortAway];
+        }
+        
+        g.home_pitcher = hPitcher;
+        g.away_pitcher = aPitcher;
+        
+        if (hPitcher !== '미정') {
+           updates.push({ id: g.id, home_pitcher: hPitcher, away_pitcher: aPitcher });
+        }
+      }
+    });
+
+    if (updates.length > 0) {
+      // Wait for it so we don't render before DB updates (and potentially cause flickering locally)
+      // Use .update() instead of .upsert() to avoid NOT NULL constraint errors for partial objects
+      await Promise.all(updates.map(async (u) => {
+        const { error } = await supabase.from('games').update({
+          home_pitcher: u.home_pitcher,
+          away_pitcher: u.away_pitcher
+        }).eq('id', u.id);
+        
+        if (error) console.error("Pitcher Update error:", error);
+      }));
+    }
+  } catch (err) {
+    console.error("Failed to fetch pitchers:", err);
+  }
+  
+  return games;
+}
+
+async function getTodayGames() {
+  const todayStr = getTodayString();
+  const { data: games, error: gamesErr } = await supabase
+    .from('games')
+    .select(`
+      id, game_date, stadium, status, cancel_reason, home_score, away_score, home_pitcher, away_pitcher,
+      home:teams!home_team_id (name),
+      away:teams!away_team_id (name)
+    `)
+    .gte('game_date', `${todayStr}T00:00:00+09:00`)
+    .lte('game_date', `${todayStr}T23:59:59+09:00`)
+    .order('game_date', { ascending: true });
+
+  if (gamesErr) {
+    console.error(gamesErr);
+    return [];
+  }
+  return updatePitchersIfMissing(games || []);
+}
+
+export default async function Home() {
+  const todayGames = await getTodayGames();
+  const todayStr = getTodayString();
+
   return (
     <DashboardGrid>
       <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 mb-4">
@@ -10,46 +123,86 @@ export default function Home() {
         <p className="text-gray-400">AI가 예측한 오늘의 KBO 승부 결과를 확인하세요.</p>
       </div>
 
-      {/* Widget Placeholder 1: Matchup (Future Prediction Phase) */}
-      <Link href="/predictions" className="col-span-1 lg:col-span-2 bg-gradient-to-br from-[#1E1E1E] to-[#1A237E]/20 rounded-xl border border-[#1A237E]/30 hover:border-[#1A237E] p-6 flex flex-col justify-between h-64 shadow-lg relative overflow-hidden group transition-all">
-        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-          <Award size={100} />
+      {/* Today's Games List */}
+      <div className="col-span-1 md:col-span-2 lg:col-span-4 xl:col-span-4 bg-[#1A1E24] rounded-xl border border-gray-800 p-6 shadow-lg min-h-64">
+        <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-800">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <CalendarIcon className="text-blue-400" />
+            {todayStr} KBO 매치업
+          </h3>
         </div>
-        <div>
-           <div className="text-xs font-bold px-2 py-1 rounded bg-[#1A237E] text-white inline-flex items-center gap-1 mb-2">
-             <TrendingUp size={12}/> AI PREVIEW
-           </div>
-           <h3 className="text-2xl font-bold text-white mb-1">오늘의 매치업 프리뷰</h3>
-           <p className="text-gray-400 text-sm">팀 전력, 선발 투수, 최근 흐름 기반 예측</p>
-        </div>
-        <div className="flex justify-end text-sm text-[#1A237E] font-bold group-hover:underline">
-          자세히 보기 →
-        </div>
-      </Link>
 
-      {/* Widget Placeholder 2: Predictions (Future Prediction Phase) */}
-      <Link href="/predictions" className="col-span-1 bg-[#1E1E1E] rounded-xl border border-gray-800 p-6 flex flex-col items-center justify-center h-64 shadow-lg border-t-4 border-t-[#D32F2F] hover:bg-gray-800/80 transition-all cursor-pointer group">
-        <Award className="w-12 h-12 text-[#D32F2F] mb-4 group-hover:scale-110 transition-transform" />
-        <h3 className="text-xl font-bold text-white mb-1">우제트 픽</h3>
-        <p className="text-gray-400 text-sm text-center">AI 승리 확률 분석<br/>결과 보러가기</p>
-      </Link>
+        {todayGames.length === 0 ? (
+          <div className="flex items-center justify-center h-32 text-gray-500">
+            오늘은 예정된 프로야구 경기가 없습니다.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {todayGames.map((game) => (
+              <div key={game.id} className="bg-[#13161A] border border-gray-800 rounded-lg p-5 flex flex-col hover:border-gray-600 transition-colors shadow-sm gap-4">
+                
+                {/* Matchup Header */}
+                <div className="flex justify-between items-center pb-2 border-b border-gray-800">
+                  <span className="text-xs font-semibold text-gray-400 flex items-center gap-1">
+                    <MapPin size={12} /> {game.stadium}
+                  </span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${game.status === 'canceled' ? 'bg-red-500/20 text-red-400' : 'bg-gray-800 text-gray-300'}`}>
+                    {game.status === 'canceled' ? '경기취소' : new Date(game.game_date).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                
+                {/* Matchup Body */}
+                <div className="flex items-center justify-between w-full py-2">
+                  {/* Away Team */}
+                  <div className="flex flex-col items-center gap-1 flex-1">
+                    <span className="text-2xl font-black text-gray-200">{game.away?.name.split(' ')[0]}</span>
+                    {game.status === 'scheduled' && (
+                       <span className={`text-[12px] font-medium px-2 py-0.5 rounded-full mt-2 ${game.away_pitcher && game.away_pitcher !== '미정' ? 'bg-[#1A237E]/30 text-blue-300' : 'bg-gray-800 text-gray-500'}`}>
+                          선발: {game.away_pitcher || '미정'}
+                       </span>
+                    )}
+                  </div>
+                  
+                  {/* VS block */}
+                  <div className="flex flex-col items-center justify-center px-4">
+                     <span className="text-sm text-gray-600 font-black tracking-widest">VS</span>
+                  </div>
+                  
+                  {/* Home Team */}
+                  <div className="flex flex-col items-center gap-1 flex-1">
+                    <span className="text-2xl font-black text-gray-200">{game.home?.name.split(' ')[0]}</span>
+                    {game.status === 'scheduled' && (
+                       <span className={`text-[12px] font-medium px-2 py-0.5 rounded-full mt-2 ${game.home_pitcher && game.home_pitcher !== '미정' ? 'bg-[#D32F2F]/30 text-red-300' : 'bg-gray-800 text-gray-500'}`}>
+                          선발: {game.home_pitcher || '미정'}
+                       </span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* AI Prediction Button - Full Width */}
+                {game.status !== 'canceled' && (
+                  <Link href={`/predictions/${game.id}`} className="mt-2 w-full py-3.5 bg-gradient-to-r from-blue-900/50 to-purple-900/50 hover:from-blue-700/60 hover:to-purple-700/60 border border-blue-500/30 text-blue-200 text-base font-bold rounded-lg transition-all flex items-center justify-center gap-2 group shadow-lg">
+                    <Award className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" />
+                    <span className="tracking-wide">Wooz AI 승부 예측하기</span>
+                  </Link>
+                )}
+                
+                {game.status === 'canceled' && game.cancel_reason && (
+                  <div className="text-center text-sm text-red-500 font-bold bg-red-900/10 py-2 rounded-lg mt-2 border border-red-900/50">
+                    {game.cancel_reason}
+                  </div>
+                )}
 
-      {/* Live Center Widget */}
-      <Link href="/live" className="col-span-1 bg-[#1A237E]/10 hover:bg-[#1A237E]/20 rounded-xl border border-[#1A237E]/30 hover:border-[#1A237E] p-6 flex flex-col items-center justify-center h-64 shadow-lg transition-all group">
-        <div className="w-12 h-12 rounded-full bg-[#1A237E]/20 flex items-center justify-center mb-4 text-[#1A237E]">
-          <span className="relative flex h-4 w-4">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#D32F2F] opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-4 w-4 bg-[#D32F2F]"></span>
-          </span>
-        </div>
-        <h3 className="text-lg font-bold text-white mb-1">라이브 스코어보드</h3>
-        <p className="text-sm text-gray-400 text-center">현재 진행중인 KBO 경기</p>
-      </Link>
-      
-      {/* Standings Widget */}
-      <Link href="/standings" className="col-span-1 md:col-span-2 lg:col-span-4 bg-[#1E1E1E] hover:bg-gray-800 rounded-xl border border-gray-800 hover:border-gray-600 p-6 flex flex-col items-center justify-center h-32 md:h-48 shadow-lg transition-all mt-4">
-        <h3 className="text-xl font-bold text-white mb-2">2026 KBO 정규시즌 순위표</h3>
-        <p className="text-gray-400">팀별 실시간 순위 및 승률 보러가기 →</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Standings Widget (Expanded Full Width since Wooz Pick Widget is removed) */}
+      <Link href="/standings" className="col-span-1 md:col-span-2 lg:col-span-4 bg-[#1E1E1E] hover:bg-gray-800 rounded-xl border border-gray-800 hover:border-gray-600 p-6 flex flex-col items-center justify-center h-24 md:h-32 shadow-lg transition-all mt-2">
+        <h3 className="text-xl font-bold text-white mb-2">2026 KBO 정규시즌 팀 스탯 및 순위표</h3>
+        <p className="text-gray-400">팀별 실시간 순위, 타율, 홈런, 방어율 보러가기 →</p>
       </Link>
     </DashboardGrid>
   );

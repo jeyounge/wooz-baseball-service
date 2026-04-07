@@ -5,40 +5,61 @@ import { supabase } from "@/lib/supabase";
 import Head from "next/head";
 
 export default function StandingsPage() {
-  const [selectedYear, setSelectedYear] = useState(2024);
+  const [selectedYear, setSelectedYear] = useState(2026);
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Available years from 2015 to 2024 (2025/2026 not played yet)
-  const availableYears = Array.from({ length: 11 }, (_, i) => 2025 - i);
+  // Available years from 2015 to 2026
+  const availableYears = Array.from({ length: 12 }, (_, i) => 2026 - i);
 
   useEffect(() => {
     async function fetchStandings() {
       setLoading(true);
-      
-      const { data, error } = await supabase
+
+      // 1. standings 조회
+      const { data: standingsData, error: standingsError } = await supabase
         .from('standings')
-        .select(`
-          *,
-          teams (
-            name,
-            logo_url
-          )
-        `)
+        .select('*')
         .eq('year', selectedYear)
         .order('rank', { ascending: true });
 
-      if (error) {
-        console.error("Error fetching standings:", error);
-      } else {
-        setStandings(data || []);
+      if (standingsError) {
+        console.error("Error fetching standings:", standingsError?.message, standingsError?.code, JSON.stringify(standingsError));
+        setLoading(false);
+        return;
       }
-      
+
+      if (!standingsData || standingsData.length === 0) {
+        setStandings([]);
+        setLoading(false);
+        return;
+      }
+
+      // 2. teams 조회
+      const { data: teamsData, error: teamsError } = await supabase
+        .from('teams')
+        .select('id, name');
+
+      if (teamsError) {
+        console.error("Error fetching teams:", teamsError?.message, teamsError?.code, JSON.stringify(teamsError));
+      }
+
+      // 3. 클라이언트에서 merge
+      const teamsMap = {};
+      (teamsData || []).forEach(t => { teamsMap[t.id] = t; });
+
+      const merged = standingsData.map(s => ({
+        ...s,
+        teams: teamsMap[s.team_id] || { name: `팀 ${s.team_id}` },
+      }));
+
+      setStandings(merged);
       setLoading(false);
     }
 
     fetchStandings();
   }, [selectedYear]);
+
 
   return (
     <div className="min-h-screen bg-[#0F1115] text-white pt-20 pb-12">
@@ -89,6 +110,9 @@ export default function StandingsPage() {
                   <th className="py-4 px-3 font-medium">패</th>
                   <th className="py-4 px-4 font-bold text-gray-300">승률</th>
                   <th className="py-4 px-4 font-medium">게임차</th>
+                  <th className="py-4 px-3 font-medium text-pink-400">팀타율</th>
+                  <th className="py-4 px-3 font-medium text-purple-400">팀홈런</th>
+                  <th className="py-4 px-3 font-medium text-blue-400">팀방어율</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
@@ -103,6 +127,9 @@ export default function StandingsPage() {
                       <td className="py-5 px-3"><div className="h-4 bg-gray-700 rounded w-6 mx-auto"></div></td>
                       <td className="py-5 px-4"><div className="h-4 bg-gray-700 rounded w-10 mx-auto"></div></td>
                       <td className="py-5 px-4"><div className="h-4 bg-gray-700 rounded w-8 mx-auto"></div></td>
+                      <td className="py-5 px-3"><div className="h-4 bg-gray-700 rounded w-8 mx-auto"></div></td>
+                      <td className="py-5 px-3"><div className="h-4 bg-gray-700 rounded w-6 mx-auto"></div></td>
+                      <td className="py-5 px-3"><div className="h-4 bg-gray-700 rounded w-8 mx-auto"></div></td>
                     </tr>
                   ))
                 ) : standings.length === 0 ? (
@@ -146,6 +173,15 @@ export default function StandingsPage() {
                         </td>
                         <td className="py-4 px-4 text-gray-400 font-medium">
                           {team.game_behind === 0 ? "-" : team.game_behind.toFixed(1)}
+                        </td>
+                        <td className="py-4 px-3 text-pink-300 font-bold">
+                          {team.team_avg ? team.team_avg.toFixed(3) : '-'}
+                        </td>
+                        <td className="py-4 px-3 text-purple-300 font-bold">
+                          {team.team_hr !== null && team.team_hr !== undefined ? team.team_hr : '-'}
+                        </td>
+                        <td className="py-4 px-3 text-blue-300 font-bold">
+                          {team.team_era ? team.team_era.toFixed(2) : '-'}
                         </td>
                       </tr>
                     );
