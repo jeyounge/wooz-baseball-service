@@ -63,12 +63,12 @@ async function scrapeMergedKboStats() {
       const losses = parseInt(cols[4].text.trim(), 10);
       const draws = parseInt(cols[5].text.trim(), 10);
       const winRateStr = cols[6].text.trim();
-      let winRate = winRateStr === '-' ? 0.0 : parseFloat(winRateStr);
+      let win_rate = winRateStr === '-' ? 0.0 : parseFloat(winRateStr);
       let gbStr = cols[7] ? cols[7].text.trim() : '0';
-      let gameBehind = gbStr === '-' ? 0.0 : parseFloat(gbStr);
+      let game_behind = gbStr === '-' ? 0.0 : parseFloat(gbStr);
 
       if (!isNaN(rank) && teamRaw) {
-        mergedData[teamRaw] = { rank, games, wins, losses, draws, winRate, gameBehind, team_avg: 0.0, team_era: 0.0, team_hr: 0 };
+        mergedData[teamRaw] = { rank, games, wins, losses, draws, win_rate, game_behind, team_avg: 0.0, team_era: 0.0, team_hr: 0 };
       }
     }
   });

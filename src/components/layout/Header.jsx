@@ -5,10 +5,16 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-gray-800 bg-[#121212]/80 backdrop-blur-md">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          {/* Logo Placeholder */}
-          <div className="w-8 h-8 rounded-md bg-[#1A237E] flex items-center justify-center font-bold text-white">W</div>
-          <span className="text-xl font-bold tracking-tight text-white">Woozet</span>
+        <Link href="/" className="flex items-center gap-2 group">
+          {/* Enhanced Wooz Emblem */}
+          <div className="relative w-9 h-9 flex items-center justify-center">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 to-blue-700 rounded-lg rotate-3 group-hover:rotate-6 transition-transform shadow-lg shadow-indigo-500/20"></div>
+            <div className="relative font-black text-white text-xl tracking-tighter">W</div>
+          </div>
+          <div className="flex flex-col -gap-1">
+            <span className="text-xl font-black tracking-tighter text-white leading-none">Wooz</span>
+            <span className="text-[10px] font-bold text-indigo-400 tracking-widest uppercase">우제트</span>
+          </div>
         </Link>
         
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-300">

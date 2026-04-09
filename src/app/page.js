@@ -2,6 +2,7 @@ import DashboardGrid from '@/components/layout/DashboardGrid';
 import Link from 'next/link';
 import { Award, TrendingUp, Calendar as CalendarIcon, MapPin } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { parse } from 'node-html-parser';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,61 +18,62 @@ function getTodayString() {
 }
 
 async function updatePitchersIfMissing(games) {
-  // Check if there are scheduled games missing pitchers (or still marked as 미정 incorrectly)
-  const needsUpdate = games.some(g => g.status === 'scheduled' && (!g.home_pitcher || !g.away_pitcher || g.home_pitcher === '미정'));
-  if (!needsUpdate) return games; // No need to fetch
+  // Lazy API fetch to populate starting pitchers via KBO Official API
+  if (games.some(g => g.status === 'scheduled' && (!g.home_pitcher || !g.away_pitcher || g.home_pitcher === '미정'))) {
+    try {
+      const d = new Date();
+      const dateStr = d.getFullYear() + 
+                      String(d.getMonth() + 1).padStart(2, '0') + 
+                      String(d.getDate()).padStart(2, '0');
+      
+      const params = new URLSearchParams({
+        leId: "1",
+        srId: "0,1,3,4,5,6,7,8,9",
+        date: dateStr
+      });
 
-  // Force KST for time check
-  const kstFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Seoul', hour: 'numeric', hour12: false });
-  const kstHour = parseInt(kstFmt.format(new Date()), 10);
-  
-  // Only trigger scraping if it's 8:00 AM KST or later
-  if (kstHour < 8) return games;
-
-  try {
-    const todayStr = getTodayString().replace(/-/g, '');
-    let scheduleGames = [];
-
-    const updates = [];
-    
-    // (긴급처리) 네이버/KBO API가 Node.js 서버의 봇 접근을 차단하여 404를 반환하는 경우를 대비해
-    // 임시로 수집된 오늘의 선발투수 맵핑 정보 (2026-04-07 기준)
-    const fallbackPitchers = {
-      "키움": "배동현", "두산": "최승용",
-      "삼성": "양창섭", "KIA": "양현종",
-      "KT": "고영표", "롯데": "나균안",
-      "한화": "류현진", "SSG": "타케다",
-      "LG": "송승기", "NC": "버하겐"
-    };
-
-    games.forEach(g => {
-      if (g.status === 'scheduled' && (!g.home_pitcher || !g.away_pitcher || g.home_pitcher === '미정')) {
-        const hName = g.home?.name || "";
-        const aName = g.away?.name || "";
-        const apiGame = scheduleGames.find(ag => ag.homeTeamName === hName && ag.awayTeamName === aName);
-        
-        let hPitcher = '미정';
-        let aPitcher = '미정';
-
-        if (apiGame) {
-          hPitcher = apiGame.homeStarterName || '미정';
-          aPitcher = apiGame.awayStarterName || '미정';
-        } else {
-          // 크롤링 블락 시 폴백 테이블 사용
-          const shortHome = hName.split(' ')[0];
-          const shortAway = aName.split(' ')[0];
-          if (fallbackPitchers[shortHome]) hPitcher = fallbackPitchers[shortHome];
-          if (fallbackPitchers[shortAway]) aPitcher = fallbackPitchers[shortAway];
-        }
-        
-        g.home_pitcher = hPitcher;
-        g.away_pitcher = aPitcher;
-        
-        if (hPitcher !== '미정') {
-           updates.push({ id: g.id, home_pitcher: hPitcher, away_pitcher: aPitcher });
-        }
+      const res = await fetch('https://www.koreabaseball.com/ws/Main.asmx/GetKboGameList', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString()
+      });
+      const json = await res.json();
+      
+      const apiPitchers = []; 
+      if (json.game) {
+        json.game.forEach(g => {
+          apiPitchers.push({
+            away: g.AWAY_NM,
+            home: g.HOME_NM,
+            awayPitcher: g.T_PIT_P_NM || '미정',
+            homePitcher: g.B_PIT_P_NM || '미정'
+          });
+        });
       }
-    });
+
+      const updates = [];
+      games.forEach(g => {
+        if (g.status === 'scheduled' && (!g.home_pitcher || !g.away_pitcher || g.home_pitcher === '미정')) {
+          const fullHome = g.home?.name || "";
+          const fullAway = g.away?.name || "";
+          
+          let hPitcher = '미정';
+          let aPitcher = '미정';
+          
+          // Match using includes (e.g. "KIA 타이거즈" includes "KIA")
+          const found = apiPitchers.find(p => fullHome.includes(p.home) && fullAway.includes(p.away));
+          if (found) {
+            hPitcher = found.homePitcher;
+            aPitcher = found.awayPitcher;
+          }
+          
+          if (hPitcher !== '미정' && hPitcher !== '') {
+            g.home_pitcher = hPitcher;
+            g.away_pitcher = aPitcher;
+            updates.push({ id: g.id, home_pitcher: hPitcher, away_pitcher: aPitcher });
+          }
+        }
+      });
 
     if (updates.length > 0) {
       // Wait for it so we don't render before DB updates (and potentially cause flickering locally)
@@ -87,6 +89,7 @@ async function updatePitchersIfMissing(games) {
     }
   } catch (err) {
     console.error("Failed to fetch pitchers:", err);
+  }
   }
   
   return games;

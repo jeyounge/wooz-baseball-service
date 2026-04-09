@@ -10,13 +10,16 @@ envFile.split('\n').forEach(line => {
 
 const supabase = createClient(url, key);
 
-async function checkTable() {
-  const { data, error } = await supabase.from('game_predictions').select('*').limit(1);
-  if (error) {
-    console.error("Table check failed:", error);
+async function findNewGame() {
+  const { data: predictions } = await supabase.from('game_predictions').select('game_id');
+  const existingIds = predictions.map(p => p.game_id);
+  
+  const { data: games } = await supabase.from('games').select('id').not('id', 'in', `(${existingIds.join(',')})`).limit(1);
+  
+  if (games && games.length > 0) {
+    console.log("Found fresh game for AI test:", games[0].id);
   } else {
-    console.log("Table check success, data found:", data.length);
+    console.log("No fresh games found.");
   }
 }
-
-checkTable();
+findNewGame();

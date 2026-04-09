@@ -10,13 +10,19 @@ envFile.split('\n').forEach(line => {
 
 const supabase = createClient(url, key);
 
-async function checkTable() {
-  const { data, error } = await supabase.from('game_predictions').select('*').limit(1);
-  if (error) {
-    console.error("Table check failed:", error);
-  } else {
-    console.log("Table check success, data found:", data.length);
-  }
+async function testFetch() {
+  const gameId = 2605; // Today's ID from previous log
+  const { data: game, error } = await supabase
+      .from('games')
+      .select(`
+        id, game_date, stadium, home_pitcher, away_pitcher,
+        home:teams!home_team_id(name), away:teams!away_team_id(name)
+      `)
+      .eq('id', gameId)
+      .single();
+      
+  console.log("Game:", JSON.stringify(game, null, 2));
+  console.log("Error:", error);
 }
 
-checkTable();
+testFetch();

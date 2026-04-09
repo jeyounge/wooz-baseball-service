@@ -10,13 +10,8 @@ envFile.split('\n').forEach(line => {
 
 const supabase = createClient(url, key);
 
-async function checkTable() {
-  const { data, error } = await supabase.from('game_predictions').select('*').limit(1);
-  if (error) {
-    console.error("Table check failed:", error);
-  } else {
-    console.log("Table check success, data found:", data.length);
-  }
+async function checkStandingsTypes() {
+   const { data } = await supabase.from('standings').select('*').limit(1);
+   console.log("Standings keys:", Object.keys(data[0]));
 }
-
-checkTable();
+checkStandingsTypes();
