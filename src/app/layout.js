@@ -9,9 +9,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="ko">
-      <body className="antialiased font-sans text-gray-100 bg-[#121212] min-h-screen flex flex-col">
+      <body className="antialiased font-sans text-gray-100 bg-[#121212] min-h-screen flex flex-col overflow-x-hidden">
         <Header />
-        <div className="flex-1">
+        <div className="flex-1 overflow-x-hidden">
           {children}
         </div>
       </body>

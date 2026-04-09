@@ -1,11 +1,13 @@
 export default function DashboardGrid({ children }) {
   return (
-    <main className="container mx-auto px-4 py-8">
+    <main className="container mx-auto px-4 py-6 md:py-10">
       {/* 
-        This is a flexible grid system. Responsive by default.
-        1 column on mobile, 2 on medium, 3 or more on large screens depending on content.
+        Flexible grid system: 
+        - 1 column on mobile
+        - 2 columns on tablet
+        - 4 columns on desktop
       */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {children}
       </div>
     </main>

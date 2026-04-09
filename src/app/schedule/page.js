@@ -125,25 +125,25 @@ export default async function SchedulePage({ searchParams }) {
                           </div>
                         </div>
                         
-                        <div className="flex items-center justify-center gap-4 sm:w-1/2">
-                          <div className={`text-right w-1/3 font-bold text-lg ${(game.home_score < game.away_score && isFinished) ? 'text-white' : 'text-gray-400'}`}>
-                            {game.away?.name}
+                        <div className="flex items-center justify-center gap-2 sm:gap-4 flex-1">
+                          <div className={`text-right flex-1 font-bold text-base sm:text-lg ${(game.home_score < game.away_score && isFinished) ? 'text-white' : 'text-gray-400'} truncate`}>
+                            {game.away?.name?.split(' ')[0]}
                           </div>
-                          <div className="flex flex-col items-center justify-center w-24">
+                          <div className="flex flex-col items-center justify-center w-16 sm:w-24 shrink-0">
                             {isCanceled ? (
-                              <span className="text-xs font-bold text-red-400 bg-red-900/30 px-2 py-1 rounded border border-red-500/30">{game.cancel_reason || '취소'}</span>
+                              <span className="text-[10px] sm:text-xs font-bold text-red-400 bg-red-900/30 px-2 py-1 rounded border border-red-500/30">취소</span>
                             ) : (isFinished || isLive) ? (
-                              <div className="flex items-center gap-2 font-black text-2xl">
+                              <div className="flex items-center gap-1 sm:gap-2 font-black text-xl sm:text-2xl">
                                 <span className={game.home_score < game.away_score ? 'text-white' : 'text-gray-500'}>{game.away_score}</span>
                                 <span className="text-gray-600 text-sm font-normal">:</span>
                                 <span className={game.home_score > game.away_score ? 'text-white' : 'text-gray-500'}>{game.home_score}</span>
                               </div>
                             ) : (
-                              <span className="text-sm font-bold text-gray-600 bg-gray-800 px-3 py-1 rounded-full">VS</span>
+                              <span className="text-[10px] sm:text-sm font-bold text-gray-600 bg-gray-800 px-2 sm:px-3 py-1 rounded-full">VS</span>
                             )}
                           </div>
-                          <div className={`text-left w-1/3 font-bold text-lg ${(game.home_score > game.away_score && isFinished) ? 'text-white' : 'text-gray-400'}`}>
-                            {game.home?.name}
+                          <div className={`text-left flex-1 font-bold text-base sm:text-lg ${(game.home_score > game.away_score && isFinished) ? 'text-white' : 'text-gray-400'} truncate`}>
+                            {game.home?.name?.split(' ')[0]}
                           </div>
                         </div>
                         <div className="sm:w-1/4 flex justify-end"></div>

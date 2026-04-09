@@ -1,0 +1,21 @@
+name: Daily KBO Data Sync
+
+on:
+  schedule:
+    # 23:30 KST (14:30 UTC) - 경기 종료 직후 동기화
+    - cron: '30 14 * * *'
+    # 00:30 KST (15:30 UTC) - 최종 데이터 확정 및 순위 반영
+    - cron: '30 15 * * *'
+  workflow_dispatch: # 수동 실행 버튼 활성화
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger KBO Data Sync API
+        run: |
+          curl -X GET "https://your-domain.vercel.app/api/sync/kbo-results" -H "Authorization: Bearer ${{ secrets.SYNC_TOKEN }}"
+          
+      - name: Trigger KBO Self-Learning (Feedback) API
+        run: |
+          curl -X GET "https://your-domain.vercel.app/api/sync/kbo-feedback" -H "Authorization: Bearer ${{ secrets.SYNC_TOKEN }}"

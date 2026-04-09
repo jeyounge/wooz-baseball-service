@@ -96,9 +96,12 @@ export default function StandingsPage() {
           </div>
         </div>
 
-        {/* Standings Table */}
-        <div className="bg-[#1A1E24] rounded-xl border border-gray-800 overflow-hidden shadow-xl">
-          <div className="overflow-x-auto">
+        {/* Standings Table Container */}
+        <div className="bg-[#1A1E24] rounded-xl border border-gray-800 overflow-hidden shadow-xl relative group">
+          {/* Mobile Scroll Hint (Only visible on small screens to indicate there's more data) */}
+          <div className="md:hidden absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-black/20 to-transparent pointer-events-none z-10"></div>
+          
+          <div className="overflow-x-auto scrollbar-hide">
             <table className="w-full text-center whitespace-nowrap">
               <thead className="bg-[#13161A] text-gray-400 text-sm border-b border-gray-800">
                 <tr>
