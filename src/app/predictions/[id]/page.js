@@ -47,7 +47,7 @@ export default async function PredictionPage({ params }) {
          </div>
          
          <div className="flex flex-col items-center justify-center p-4">
-            <span className="text-sm font-bold text-gray-600 mb-1">{new Date(game.game_date).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}</span>
+            <span className="text-sm font-bold text-gray-600 mb-1">{new Date(game.game_date).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short', timeZone: 'Asia/Seoul' })}</span>
             <span className="text-2xl font-black italic text-gray-700">VS</span>
             <span className="text-xs text-gray-500 mt-2">{game.stadium}</span>
          </div>

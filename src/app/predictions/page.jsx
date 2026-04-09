@@ -81,7 +81,7 @@ export default async function PredictionsPage() {
         <div className="flex justify-between items-center p-4 bg-slate-900/50 border-b border-white/5">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-400 tracking-tighter">
             <Clock size={14} className="text-indigo-400" />
-            {new Date(game.game_date).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+            {new Date(game.game_date).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })}
           </div>
           <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase">
              <MapPin size={12}/> {game.stadium}

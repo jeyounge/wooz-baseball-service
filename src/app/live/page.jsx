@@ -76,7 +76,7 @@ export default async function LiveCenterPage() {
         
         {game.status === 'scheduled' && (
           <div className="mt-6 text-center text-sm text-gray-500 font-medium">
-            {new Date(game.game_date).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' })} 시작
+            {new Date(game.game_date).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit', timeZone: 'Asia/Seoul' })} 시작
           </div>
         )}
       </div>

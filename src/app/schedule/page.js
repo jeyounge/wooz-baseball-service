@@ -48,8 +48,12 @@ export default async function SchedulePage({ searchParams }) {
   const gamesByDate = {};
   if (games) {
     games.forEach(game => {
-      const dateObj = new Date(game.game_date);
-      const dateKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+      // Use toLocaleDateString to get the date parts in KST
+      const d = new Date(game.game_date);
+      const year = d.toLocaleDateString('en-US', { year: 'numeric', timeZone: 'Asia/Seoul' });
+      const month = d.toLocaleDateString('en-US', { month: '2-digit', timeZone: 'Asia/Seoul' });
+      const day = d.toLocaleDateString('en-US', { day: '2-digit', timeZone: 'Asia/Seoul' });
+      const dateKey = `${year}-${month}-${day}`;
       if (!gamesByDate[dateKey]) gamesByDate[dateKey] = [];
       gamesByDate[dateKey].push(game);
     });
@@ -108,8 +112,12 @@ export default async function SchedulePage({ searchParams }) {
                 
                 <div className="divide-y divide-gray-800/50">
                   {dateGames.map(game => {
-                    const gameTimeObj = new Date(game.game_date);
-                    const timeStr = `${String(gameTimeObj.getHours()).padStart(2, '0')}:${String(gameTimeObj.getMinutes()).padStart(2, '0')}`;
+                    const timeStr = new Date(game.game_date).toLocaleTimeString('ko-KR', { 
+                      hour: '2-digit', 
+                      minute: '2-digit', 
+                      hour12: false, 
+                      timeZone: 'Asia/Seoul' 
+                    });
                     const isFinished = game.status === 'finished';
                     const isCanceled = game.status === 'canceled';
                     const isLive = game.status === 'live';

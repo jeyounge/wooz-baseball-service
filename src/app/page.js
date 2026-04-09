@@ -150,7 +150,7 @@ export default async function Home() {
                     <MapPin size={12} /> {game.stadium}
                   </span>
                   <span className={`text-xs font-bold px-2 py-0.5 rounded ${game.status === 'canceled' ? 'bg-red-500/20 text-red-400' : 'bg-gray-800 text-gray-300'}`}>
-                    {game.status === 'canceled' ? '경기취소' : new Date(game.game_date).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                    {game.status === 'canceled' ? '경기취소' : new Date(game.game_date).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })}
                   </span>
                 </div>
                 
