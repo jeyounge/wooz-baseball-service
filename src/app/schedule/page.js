@@ -40,6 +40,24 @@ export default async function SchedulePage({ searchParams }) {
     );
   }
 
+  // Sync Logic: If we are viewing the current month, sync for today and yesterday
+  if (currentYear === todayKst.getFullYear() && currentMonth === (todayKst.getMonth() + 1)) {
+    const { syncGameStatusWithKbo } = await import('@/lib/kbo-sync');
+    
+    // Calculate yesterday's date string
+    const yesterday = new Date(todayKst);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.getFullYear() + 
+                         String(yesterday.getMonth() + 1).padStart(2, '0') + 
+                         String(yesterday.getDate()).padStart(2, '0');
+    const todayStr = todayKst.getFullYear() + 
+                     String(todayKst.getMonth() + 1).padStart(2, '0') + 
+                     String(todayKst.getDate()).padStart(2, '0');
+
+    await syncGameStatusWithKbo(games, yesterdayStr);
+    await syncGameStatusWithKbo(games, todayStr);
+  }
+
   const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
   const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
   const nextMonthLink = currentMonth === 12 ? 1 : currentMonth + 1;

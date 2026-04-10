@@ -18,27 +18,27 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-[100] w-full border-b border-white/5 bg-[#121212]/90 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div className="w-full px-4 sm:px-8 h-16 flex items-center">
         
         {/* Logo Section */}
-        <Link href="/" className="flex items-center gap-2.5 group">
+        <Link href="/" className="flex items-center gap-2.5 group mr-12">
           <div className="relative w-9 h-9 flex items-center justify-center">
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 to-blue-700 rounded-lg rotate-3 group-hover:rotate-6 transition-transform shadow-lg shadow-indigo-500/30"></div>
             <div className="relative font-black text-white text-xl tracking-tighter">W</div>
           </div>
-          <div className="flex flex-col -gap-1 hidden lg:flex"> {/* LG(1024px) 이상에서만 텍스트 노출 */}
+          <div className="flex flex-col -gap-1">
             <span className="text-xl font-black tracking-tighter text-white leading-none italic">Wooz</span>
             <span className="text-[10px] font-extrabold text-indigo-400 tracking-widest uppercase">우제트</span>
           </div>
         </Link>
         
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-8">
+        {/* Desktop Navigation - Attached to the left next to logo */}
+        <nav className="hidden md:flex items-center gap-10">
           {navLinks.map((link) => (
             <Link 
               key={link.href} 
               href={link.href} 
-              className={`text-sm font-bold flex items-center gap-2 transition-all hover:scale-105 ${link.color || 'text-slate-300 hover:text-white'}`}
+              className={`text-sm font-bold flex items-center gap-2 transition-all hover:text-white ${link.color || 'text-slate-300 hover:text-white'}`}
             >
               {link.icon}
               {link.label}
@@ -46,13 +46,15 @@ export default function Header() {
           ))}
         </nav>
 
-        {/* Mobile menu button */}
-        <button 
-          onClick={toggleMenu}
-          className="md:hidden p-2 text-slate-300 hover:text-white transition-colors"
-        >
-          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        {/* Mobile menu button & Right-side actions */}
+        <div className="ml-auto flex items-center gap-4">
+          <button 
+            onClick={toggleMenu}
+            className="md:hidden p-2 text-slate-300 hover:text-white transition-colors"
+          >
+            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Sidebar Drawer (Overlay) */}
