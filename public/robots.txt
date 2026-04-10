@@ -4,4 +4,4 @@ Allow: /
 User-agent: Mediapartners-Google
 Allow: /
 
-Sitemap: https://wooz-baseball.kr/sitemap.xml
+Sitemap: https://wooz.z-labs.kr/sitemap.xml

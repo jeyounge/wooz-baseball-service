@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://wooz-baseball.kr/</loc>
+    <loc>https://wooz.z-labs.kr/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://wooz-baseball.kr/standings</loc>
+    <loc>https://wooz.z-labs.kr/standings</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://wooz-baseball.kr/schedule</loc>
+    <loc>https://wooz.z-labs.kr/schedule</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://wooz-baseball.kr/records</loc>
+    <loc>https://wooz.z-labs.kr/records</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
