@@ -207,6 +207,47 @@ export default async function Home() {
         <h3 className="text-xl font-bold text-white mb-2">2026 KBO 정규시즌 팀 스탯 및 순위표</h3>
         <p className="text-gray-400">팀별 실시간 순위, 타율, 홈런, 방어율 보러가기 →</p>
       </Link>
+
+      {/* AI Architecture Section - Authority & SEO */}
+      <div className="col-span-1 md:col-span-2 lg:col-span-4 mt-8 bg-[#1A1E24] rounded-xl border border-gray-800 p-8 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 opacity-10">
+           <Award size={120} className="text-blue-500" />
+        </div>
+        
+        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+          <TrendingUp className="text-blue-400" />
+          WooZ AI: Algol-1 모델 아키텍처
+        </h2>
+        
+        <div className="prose prose-invert max-w-none text-gray-400 space-y-4">
+          <p>
+            WooZ Baseball 서비스의 핵심인 <span className="text-blue-200 font-semibold text-lg">Algol-1</span> 예측 엔진은 단순한 승률 계산을 넘어선 다중 레이어 구조의 딥러닝 모델입니다. 
+            매 경기 수천 가지의 변수를 실시간으로 처리하여 사용자에게 가장 객관적인 데이터를 제공하는 것을 목표로 합니다.
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+            <div className="bg-[#13161A] p-5 rounded-lg border border-gray-800/50">
+              <h4 className="text-blue-300 font-bold mb-3">1. 다차원 데이터 통합 (ELO & Statcast)</h4>
+              <p className="text-sm leading-relaxed">
+                전통적인 세이버메트릭스 데이터뿐만 아니라, 팀 간의 상대적 전력을 평가하는 **ELO rating 시스템**을 KBO 리그 특성에 맞춰 커스텀하여 반영합니다. 
+                여기에 고도화된 선수별 컨디션 지표와 최근 10경기 추세 데이터를 결합하여 가중치를 부여합니다.
+              </p>
+            </div>
+            
+            <div className="bg-[#13161A] p-5 rounded-lg border border-gray-800/50">
+              <h4 className="text-purple-300 font-bold mb-3">2. 환경 변수 보정 (Park Factor)</h4>
+              <p className="text-sm leading-relaxed">
+                KBO 각 구장의 특성(파크 팩터)과 당일의 기상 상태(풍향, 습도)를 변수로 산입합니다. 
+                특히 장타 허용률이 높은 고척이나 문학 경기와 같은 구장별 특수성을 시뮬레이션에 반영하여 예측 정확도를 높입니다.
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-6 pt-6 border-t border-gray-800 italic text-sm">
+            *모든 예측 데이터는 통계적 확률을 기반으로 하며, 실제 경기 결과와는 차이가 있을 수 있습니다. WooZ AI는 지속적인 학습을 통해 모델의 오차율을 줄여나가고 있습니다.
+          </p>
+        </div>
+      </div>
     </DashboardGrid>
   );
 }
