@@ -18,10 +18,10 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-[100] w-full border-b border-white/5 bg-[#121212]/90 backdrop-blur-xl">
-      <div className="w-full px-4 sm:px-8 h-16 flex items-center">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center">
         
         {/* Logo Section */}
-        <Link href="/" className="flex items-center gap-2.5 group mr-12">
+        <Link href="/" className="flex items-center gap-2.5 group mr-12 shrink-0">
           <div className="relative w-9 h-9 flex items-center justify-center">
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 to-blue-700 rounded-lg rotate-3 group-hover:rotate-6 transition-transform shadow-lg shadow-indigo-500/30"></div>
             <div className="relative font-black text-white text-xl tracking-tighter">W</div>
@@ -32,8 +32,8 @@ export default function Header() {
           </div>
         </Link>
         
-        {/* Desktop Navigation - Attached to the left next to logo */}
-        <nav className="hidden md:flex items-center gap-10">
+        {/* Desktop Navigation - Grouped on the left */}
+        <nav className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
             <Link 
               key={link.href} 
@@ -47,7 +47,7 @@ export default function Header() {
         </nav>
 
         {/* Mobile menu button & Right-side actions */}
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto">
           <button 
             onClick={toggleMenu}
             className="md:hidden p-2 text-slate-300 hover:text-white transition-colors"

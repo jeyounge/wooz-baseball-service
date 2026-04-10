@@ -3,7 +3,7 @@ import { Calendar, ChevronLeft, ChevronRight, AlertCircle, MapPin } from 'lucide
 import Link from 'next/link';
 import ScrollToToday from './ScrollToToday';
 
-export const revalidate = 0; // Opt out of static generation for real-time
+export const dynamic = 'force-dynamic';
 
 function getKstDate() {
   const d = new Date();
