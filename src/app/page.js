@@ -17,11 +17,12 @@ function getTodayString() {
   return `${year}-${month}-${day}`;
 }
 
-async function updatePitchersIfMissing(games) {
-  // Lazy API fetch to populate starting pitchers via KBO Official API
-  if (games.some(g => g.status === 'scheduled' && (!g.home_pitcher || !g.away_pitcher || g.home_pitcher === '미정'))) {
+async function syncGameStatusWithKbo(games) {
+  // Lazy API fetch to sync status and pitchers via KBO Official API
+  if (games.length > 0) {
     try {
       const d = new Date();
+      // KBO API uses YYYYMMDD
       const dateStr = d.getFullYear() + 
                       String(d.getMonth() + 1).padStart(2, '0') + 
                       String(d.getDate()).padStart(2, '0');
@@ -39,57 +40,65 @@ async function updatePitchersIfMissing(games) {
       });
       const json = await res.json();
       
-      const apiPitchers = []; 
+      const kboData = []; 
       if (json.game) {
         json.game.forEach(g => {
-          apiPitchers.push({
+          kboData.push({
             away: g.AWAY_NM,
             home: g.HOME_NM,
             awayPitcher: g.T_PIT_P_NM || '미정',
-            homePitcher: g.B_PIT_P_NM || '미정'
+            homePitcher: g.B_PIT_P_NM || '미정',
+            stateCode: g.GAME_STATE_SC, // 0: 예정, 1: 진행, 2: 종료, 3: 취소
+            cancelReason: g.CANCEL_NM || '' 
           });
         });
       }
 
       const updates = [];
       games.forEach(g => {
-        if (g.status === 'scheduled' && (!g.home_pitcher || !g.away_pitcher || g.home_pitcher === '미정')) {
-          const fullHome = g.home?.name || "";
-          const fullAway = g.away?.name || "";
+        const fullHome = g.home?.name || "";
+        const fullAway = g.away?.name || "";
+        
+        // Find matching game in KBO data
+        const found = kboData.find(k => fullHome.includes(k.home) && fullAway.includes(k.away));
+        
+        if (found) {
+          const updatePayload = {};
           
-          let hPitcher = '미정';
-          let aPitcher = '미정';
-          
-          // Match using includes (e.g. "KIA 타이거즈" includes "KIA")
-          const found = apiPitchers.find(p => fullHome.includes(p.home) && fullAway.includes(p.away));
-          if (found) {
-            hPitcher = found.homePitcher;
-            aPitcher = found.awayPitcher;
+          // 1. Check for Cancellation (Rain, etc.)
+          if (found.stateCode === '3' && g.status !== 'canceled') {
+             updatePayload.status = 'canceled';
+             updatePayload.cancel_reason = found.cancelReason;
+             g.status = 'canceled';
+             g.cancel_reason = found.cancelReason;
           }
           
-          if (hPitcher !== '미정' && hPitcher !== '') {
-            g.home_pitcher = hPitcher;
-            g.away_pitcher = aPitcher;
-            updates.push({ id: g.id, home_pitcher: hPitcher, away_pitcher: aPitcher });
+          // 2. Sync Pitchers (only if not canceled and still scheduled)
+          if (g.status === 'scheduled') {
+            if (found.homePitcher !== '미정' && found.homePitcher !== '' && g.home_pitcher !== found.homePitcher) {
+              updatePayload.home_pitcher = found.homePitcher;
+              updatePayload.away_pitcher = found.awayPitcher;
+              g.home_pitcher = found.homePitcher;
+              g.away_pitcher = found.awayPitcher;
+            }
+          }
+
+          if (Object.keys(updatePayload).length > 0) {
+            updates.push({ id: g.id, ...updatePayload });
           }
         }
       });
 
-    if (updates.length > 0) {
-      // Wait for it so we don't render before DB updates (and potentially cause flickering locally)
-      // Use .update() instead of .upsert() to avoid NOT NULL constraint errors for partial objects
-      await Promise.all(updates.map(async (u) => {
-        const { error } = await supabase.from('games').update({
-          home_pitcher: u.home_pitcher,
-          away_pitcher: u.away_pitcher
-        }).eq('id', u.id);
-        
-        if (error) console.error("Pitcher Update error:", error);
-      }));
+      if (updates.length > 0) {
+        await Promise.all(updates.map(async (u) => {
+          const { id, ...data } = u;
+          const { error } = await supabase.from('games').update(data).eq('id', id);
+          if (error) console.error("Game Sync error:", error);
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to sync game status:", err);
     }
-  } catch (err) {
-    console.error("Failed to fetch pitchers:", err);
-  }
   }
   
   return games;
@@ -112,7 +121,7 @@ async function getTodayGames() {
     console.error(gamesErr);
     return [];
   }
-  return updatePitchersIfMissing(games || []);
+  return syncGameStatusWithKbo(games || []);
 }
 
 export default async function Home() {
