@@ -67,8 +67,8 @@ export default async function PredictionsPage() {
   
   // Sort by confidence (descending)
   const sortedGames = [...analyzedGames].sort((a, b) => {
-    const confA = parseInt(a.matchedPrediction?.recommendations?.priority_1?.confidence || a.matchedPrediction?.analysis_report?.confidence || 0);
-    const confB = parseInt(b.matchedPrediction?.recommendations?.priority_1?.confidence || b.matchedPrediction?.analysis_report?.confidence || 0);
+    const confA = Math.max(a.matchedPrediction?.home_win_prob || 0, a.matchedPrediction?.away_win_prob || 0);
+    const confB = Math.max(b.matchedPrediction?.home_win_prob || 0, b.matchedPrediction?.away_win_prob || 0);
     return confB - confA;
   });
 
@@ -130,7 +130,7 @@ export default async function PredictionsPage() {
             <div className="space-y-3 pt-4 border-t border-white/5">
               <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 mb-2">
                  <span className="flex items-center gap-1"><Zap size={12} className="text-yellow-500"/> 우제트 픽</span>
-                 <span className="text-indigo-400">신뢰도 {pred.recommendations?.priority_1?.confidence || pred.analysis_report?.confidence || '--'}%</span>
+                 <span className="text-indigo-400">신뢰도 {Math.max(pred.home_win_prob || 0, pred.away_win_prob || 0) || '--'}%</span>
               </div>
               
               <div className="grid grid-cols-3 gap-2">
@@ -190,20 +190,22 @@ export default async function PredictionsPage() {
                  </div>
                </div>
                <div className="space-y-3">
-                 {safeCombo.map((game, i) => (
+                 {safeCombo.map((game, i) => {
+                   const conf = Math.max(game.matchedPrediction?.home_win_prob || 0, game.matchedPrediction?.away_win_prob || 0);
+                   return (
                    <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-slate-900/50 border border-white/5 hover:bg-slate-800/80 transition-colors">
-                      <div className="flex flex-col">
-                        <span className="text-xs text-slate-500 mb-1">{game.away?.name?.split(' ')[0]} <span className="text-[10px]">vs</span> {game.home?.name?.split(' ')[0]}</span>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] text-slate-500 mb-0.5">{game.away?.name?.split(' ')[0]} <span className="text-[9px]">vs</span> {game.home?.name?.split(' ')[0]}</span>
                         <span className={`text-sm sm:text-base font-bold ${getPickColor(game.matchedPrediction?.pick_1)}`}>
                           {game.matchedPrediction?.pick_1}
                         </span>
                       </div>
                       <div className="text-right">
-                        <span className="text-[10px] sm:text-xs text-slate-500 block mb-1">AI 신뢰도</span>
-                        <span className="text-sm sm:text-base font-black text-white">{game.matchedPrediction?.recommendations?.priority_1?.confidence || game.matchedPrediction?.analysis_report?.confidence}%</span>
+                        <span className="text-[10px] sm:text-xs text-slate-500 block mb-0.5">AI 승률</span>
+                        <span className="text-sm sm:text-base font-black text-white">{conf}%</span>
                       </div>
                    </div>
-                 ))}
+                 )})}
                </div>
              </div>
           </div>
@@ -215,24 +217,32 @@ export default async function PredictionsPage() {
                  <div className="p-3 bg-orange-500/20 rounded-xl text-orange-400"><Zap size={28}/></div>
                  <div>
                    <h3 className="text-xl sm:text-2xl font-black text-white">두 번째: 고배당 조합 <span className="text-orange-400 opacity-80">({highYieldCombo.length}폴더)</span></h3>
-                   <p className="text-sm text-orange-400/80 mt-1">큰 배당과 수익성을 노리는 추천 리스키 픽</p>
+                   <p className="text-sm text-orange-400/80 mt-1">핸디캡, 언오버를 활용한 리스키 픽 (역배당 노림)</p>
                  </div>
                </div>
                <div className="space-y-3">
-                 {highYieldCombo.map((game, i) => (
+                 {highYieldCombo.map((game, i) => {
+                   const conf = Math.max(game.matchedPrediction?.home_win_prob || 0, game.matchedPrediction?.away_win_prob || 0);
+                   const isEven = i % 2 === 0;
+                   const highYieldPick = isEven ? (game.matchedPrediction?.pick_3 || game.matchedPrediction?.pick_1) : (game.matchedPrediction?.pick_2 || game.matchedPrediction?.pick_1);
+                   
+                   return (
                    <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-slate-900/50 border border-white/5 hover:bg-slate-800/80 transition-colors">
-                      <div className="flex flex-col">
-                        <span className="text-xs text-slate-500 mb-1">{game.away?.name?.split(' ')[0]} <span className="text-[10px]">vs</span> {game.home?.name?.split(' ')[0]}</span>
-                        <span className={`text-sm sm:text-base font-bold ${getPickColor(game.matchedPrediction?.pick_1)}`}>
-                          {game.matchedPrediction?.pick_1}
-                        </span>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] text-slate-500 mb-0.5">{game.away?.name?.split(' ')[0]} <span className="text-[9px]">vs</span> {game.home?.name?.split(' ')[0]}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded font-bold uppercase">{isEven ? '핸디' : '언옵'}</span>
+                          <span className={`text-sm sm:text-base font-bold ${getPickColor(highYieldPick)}`}>
+                            {highYieldPick}
+                          </span>
+                        </div>
                       </div>
                       <div className="text-right">
-                        <span className="text-[10px] sm:text-xs text-slate-500 block mb-1">AI 신뢰도</span>
-                        <span className="text-sm sm:text-base font-black text-white">{game.matchedPrediction?.recommendations?.priority_1?.confidence || game.matchedPrediction?.analysis_report?.confidence}%</span>
+                        <span className="text-[10px] sm:text-xs text-orange-400/70 block mb-0.5">승패확률기준</span>
+                        <span className="text-sm sm:text-base font-black text-white">{conf}%</span>
                       </div>
                    </div>
-                 ))}
+                 )})}
                </div>
              </div>
           </div>
