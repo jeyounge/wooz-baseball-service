@@ -291,14 +291,29 @@ export default async function PredictionsPage() {
           {/* Body: 3 Games */}
           <div className="p-6 sm:p-8 space-y-8">
             {targetGames.map((game, idx) => {
-              const scores = (game.matchedPrediction?.predicted_score || "0-0").split('-');
-              let awayScore = scores[0];
-              let homeScore = scores[1];
+              const pred = game.matchedPrediction;
+              const scoresRaw = (pred?.predicted_score || "0-0").split('-').map(s => parseInt(s) || 0);
               
-              if(!awayScore || !homeScore) { awayScore = "0"; homeScore = "0"; }
+              // Align max score with the team that has the higher win probability to prevent contradiction
+              const maxScore = Math.max(...scoresRaw);
+              const minScore = Math.min(...scoresRaw);
+              
+              let homeScoreScore = 0;
+              let awayScoreScore = 0;
+              
+              const homeWinProb = pred?.home_win_prob || 50;
+              const awayWinProb = pred?.away_win_prob || 50;
 
-              const awayBandsSet = new Set(getBands(awayScore));
-              const homeBandsSet = new Set(getBands(homeScore));
+              if (homeWinProb >= awayWinProb) {
+                 homeScoreScore = maxScore;
+                 awayScoreScore = minScore;
+              } else {
+                 homeScoreScore = minScore;
+                 awayScoreScore = maxScore;
+              }
+
+              const homeBandsSet = new Set(getBands(homeScoreScore));
+              const awayBandsSet = new Set(getBands(awayScoreScore));
 
               return (
                 <div key={idx} className="flex flex-col lg:flex-row gap-6 lg:items-center bg-slate-900/40 p-4 rounded-2xl border border-white/5">
@@ -306,29 +321,35 @@ export default async function PredictionsPage() {
                     <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-black text-slate-400 text-lg">{idx + 1}</div>
                     <div>
                        <span className="text-xs text-slate-500 block mb-1">{new Date(game.game_date).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })}</span>
-                       <span className="text-sm font-bold text-white">{game.away?.name?.split(' ')[0]} <span className="text-slate-600 mx-1">vs</span> {game.home?.name?.split(' ')[0]}</span>
+                       <span className="text-sm font-bold text-white"><span className="text-red-400 font-black mr-1">[홈]</span>{game.home?.name?.split(' ')[0]} <span className="text-slate-600 mx-1">vs</span> {game.away?.name?.split(' ')[0]}</span>
                     </div>
                   </div>
 
                   <div className="flex-1 space-y-4">
-                    {/* Away Team */}
+                    {/* Home Team (Top) */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                      <div className="w-16 text-xs font-bold text-slate-400 uppercase tracking-wider">{game.away?.name?.split(' ')[0]}</div>
+                      <div className="w-16 text-xs font-bold text-slate-400 tracking-wider flex flex-col">
+                        <span className="text-[9px] text-red-500 font-black mb-0.5">HOME</span>
+                        {game.home?.name?.split(' ')[0]}
+                      </div>
                       <div className="flex-1 grid grid-cols-3 sm:grid-cols-6 gap-2">
                         {bandsList.map(b => (
-                          <div key={b} className={`py-2 text-center rounded-lg border text-xs font-bold transition-all ${awayBandsSet.has(b) ? 'bg-red-500/20 border-red-500 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-slate-800/50 border-slate-700 text-slate-600'}`}>
+                          <div key={b} className={`py-2 text-center rounded-lg border text-xs font-bold transition-all ${homeBandsSet.has(b) ? 'bg-red-500/20 border-red-500 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-slate-800/50 border-slate-700 text-slate-600'}`}>
                             {b}
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    {/* Home Team */}
+                    {/* Away Team (Bottom) */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                      <div className="w-16 text-xs font-bold text-slate-400 uppercase tracking-wider">{game.home?.name?.split(' ')[0]}</div>
+                      <div className="w-16 text-xs font-bold text-slate-400 tracking-wider flex flex-col">
+                        <span className="text-[9px] text-blue-500 font-black mb-0.5">AWAY</span>
+                        {game.away?.name?.split(' ')[0]}
+                      </div>
                       <div className="flex-1 grid grid-cols-3 sm:grid-cols-6 gap-2">
                         {bandsList.map(b => (
-                          <div key={b} className={`py-2 text-center rounded-lg border text-xs font-bold transition-all ${homeBandsSet.has(b) ? 'bg-red-500/20 border-red-500 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-slate-800/50 border-slate-700 text-slate-600'}`}>
+                          <div key={b} className={`py-2 text-center rounded-lg border text-xs font-bold transition-all ${awayBandsSet.has(b) ? 'bg-red-500/20 border-red-500 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-slate-800/50 border-slate-700 text-slate-600'}`}>
                             {b}
                           </div>
                         ))}
