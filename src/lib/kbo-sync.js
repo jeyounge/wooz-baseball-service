@@ -47,13 +47,18 @@ export async function syncGameStatusWithKbo(games, dateStr) {
 
     const updates = [];
     games.forEach(g => {
+      // Ensure the game belongs to the requested dateStr
+      // Format game_date to YYYYMMDD in KST
+      const gDate = new Date(g.game_date);
+      const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(gDate);
+      const gDateStr = `${parts.find(p=>p.type==='year').value}${parts.find(p=>p.type==='month').value}${parts.find(p=>p.type==='day').value}`;
+      
+      if (gDateStr !== dateStr) return;
+
       const fullHome = g.home?.name || "";
       const fullAway = g.away?.name || "";
       
-      // KBO API uses short names (e.g., 'KIA', '한화')
-      // Our DB has full names (e.g., 'KIA 타이거즈', '한화 이글스')
       const found = kboData.find(k => {
-        // More robust matching: Check if KBO name is in DB name OR DB name is in KBO name
         const homeMatch = fullHome.includes(k.home) || k.home.includes(fullHome);
         const awayMatch = fullAway.includes(k.away) || k.away.includes(fullAway);
         return homeMatch && awayMatch;
@@ -62,13 +67,13 @@ export async function syncGameStatusWithKbo(games, dateStr) {
       if (found) {
         const updatePayload = {};
         
-        // 0: 예정, 1: 진행, 2: 종료, 3: 취소
-        // Use loose equality (==) in case stateCode is a number
-        if (found.stateCode == '3' && g.status !== 'canceled') {
+        // GAME_STATE_SC from KBO: 1: 예정, 2: 진행, 3: 종료, 4: 취소
+        // If it's 4 (취소), mark as canceled
+        if (found.stateCode == '4' && g.status !== 'canceled') {
            updatePayload.status = 'canceled';
-           updatePayload.cancel_reason = found.cancelReason;
+           updatePayload.cancel_reason = found.cancelReason || '취소';
            g.status = 'canceled';
-           g.cancel_reason = found.cancelReason;
+           g.cancel_reason = found.cancelReason || '취소';
         }
         
         // 2. Sync Pitchers (if still scheduled)
