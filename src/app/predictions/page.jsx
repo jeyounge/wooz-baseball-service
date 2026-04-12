@@ -62,6 +62,27 @@ export default async function PredictionsPage() {
     };
   }) || [];
 
+  // 4. Calculate Combinations (추천 조합)
+  const analyzedGames = gamesWithPicks.filter(g => g.hasAnalysed);
+  
+  // Sort by confidence (descending)
+  const sortedGames = [...analyzedGames].sort((a, b) => {
+    const confA = parseInt(a.matchedPrediction?.recommendations?.priority_1?.confidence || a.matchedPrediction?.analysis_report?.confidence || 0);
+    const confB = parseInt(b.matchedPrediction?.recommendations?.priority_1?.confidence || b.matchedPrediction?.analysis_report?.confidence || 0);
+    return confB - confA;
+  });
+
+  // 안전 조합 (Top 3)
+  const safeCombo = sortedGames.slice(0, 3);
+  
+  // 고배당 조합 (4~5 games) - 역순으로 정렬하여 신뢰도가 상대적으로 낮은(배당이 높은) 경기들 위주로 5경기 픽 후 시간순 정렬
+  let highYieldCombo = [];
+  if (sortedGames.length >= 4) {
+    highYieldCombo = [...sortedGames].reverse().slice(0, 5).sort((a, b) => new Date(a.game_date) - new Date(b.game_date));
+  } else {
+    highYieldCombo = [...sortedGames]; // 3경기 이하면 있는 그대로 가져감
+  }
+
   // Helper: Get pick color
   const getPickColor = (pick) => {
     if (pick?.includes('승')) return 'text-blue-400';
@@ -145,6 +166,81 @@ export default async function PredictionsPage() {
     );
   };
 
+  const CombinationSection = () => {
+    if (safeCombo.length === 0) return null;
+
+    return (
+      <div className="mt-20 space-y-8 animate-fade-in-up">
+        <div className="text-center mb-10">
+           <h2 className="text-3xl md:text-4xl font-black text-white italic tracking-tighter flex items-center justify-center gap-3">
+             우제트 <span className="bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">RECOMMENDED</span> 조합
+           </h2>
+           <p className="text-slate-400 mt-2">AI 분석 신뢰도를 바탕으로 산출된 추천 폴더입니다.</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Safe Combo */}
+          <div className="bg-gradient-to-b from-blue-900/40 to-[#1A1E24] rounded-3xl p-[1px] shadow-2xl shadow-blue-900/20 group hover:shadow-blue-600/30 transition-all duration-300">
+             <div className="bg-[#1A1E24] rounded-[23px] p-6 sm:p-8 h-full border border-blue-500/10 group-hover:border-blue-500/30 transition-colors">
+               <div className="flex items-center gap-4 mb-6">
+                 <div className="p-3 bg-blue-500/20 rounded-xl text-blue-400"><Award size={28}/></div>
+                 <div>
+                   <h3 className="text-xl sm:text-2xl font-black text-white">첫 번째: 안전 조합 <span className="text-blue-400 opacity-80">(3폴더)</span></h3>
+                   <p className="text-sm text-blue-400/80 mt-1">당첨 확률을 극대화한 가장 유력한 픽</p>
+                 </div>
+               </div>
+               <div className="space-y-3">
+                 {safeCombo.map((game, i) => (
+                   <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-slate-900/50 border border-white/5 hover:bg-slate-800/80 transition-colors">
+                      <div className="flex flex-col">
+                        <span className="text-xs text-slate-500 mb-1">{game.away?.name?.split(' ')[0]} <span className="text-[10px]">vs</span> {game.home?.name?.split(' ')[0]}</span>
+                        <span className={`text-sm sm:text-base font-bold ${getPickColor(game.matchedPrediction?.pick_1)}`}>
+                          {game.matchedPrediction?.pick_1}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] sm:text-xs text-slate-500 block mb-1">AI 신뢰도</span>
+                        <span className="text-sm sm:text-base font-black text-white">{game.matchedPrediction?.recommendations?.priority_1?.confidence || game.matchedPrediction?.analysis_report?.confidence}%</span>
+                      </div>
+                   </div>
+                 ))}
+               </div>
+             </div>
+          </div>
+
+          {/* High Yield Combo */}
+          <div className="bg-gradient-to-b from-orange-900/40 to-[#1A1E24] rounded-3xl p-[1px] shadow-2xl shadow-orange-900/20 group hover:shadow-orange-600/30 transition-all duration-300">
+             <div className="bg-[#1A1E24] rounded-[23px] p-6 sm:p-8 h-full border border-orange-500/10 group-hover:border-orange-500/30 transition-colors">
+               <div className="flex items-center gap-4 mb-6">
+                 <div className="p-3 bg-orange-500/20 rounded-xl text-orange-400"><Zap size={28}/></div>
+                 <div>
+                   <h3 className="text-xl sm:text-2xl font-black text-white">두 번째: 고배당 조합 <span className="text-orange-400 opacity-80">({highYieldCombo.length}폴더)</span></h3>
+                   <p className="text-sm text-orange-400/80 mt-1">큰 배당과 수익성을 노리는 추천 리스키 픽</p>
+                 </div>
+               </div>
+               <div className="space-y-3">
+                 {highYieldCombo.map((game, i) => (
+                   <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-slate-900/50 border border-white/5 hover:bg-slate-800/80 transition-colors">
+                      <div className="flex flex-col">
+                        <span className="text-xs text-slate-500 mb-1">{game.away?.name?.split(' ')[0]} <span className="text-[10px]">vs</span> {game.home?.name?.split(' ')[0]}</span>
+                        <span className={`text-sm sm:text-base font-bold ${getPickColor(game.matchedPrediction?.pick_1)}`}>
+                          {game.matchedPrediction?.pick_1}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] sm:text-xs text-slate-500 block mb-1">AI 신뢰도</span>
+                        <span className="text-sm sm:text-base font-black text-white">{game.matchedPrediction?.recommendations?.priority_1?.confidence || game.matchedPrediction?.analysis_report?.confidence}%</span>
+                      </div>
+                   </div>
+                 ))}
+               </div>
+             </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="container mx-auto px-4 py-12 max-w-6xl">
       {/* Page Header */}
@@ -187,6 +283,9 @@ export default async function PredictionsPage() {
                <GamePickCard key={game.id} game={game} />
              ))}
           </div>
+
+          {/* Recommended Combinations Section */}
+          <CombinationSection />
         </>
       )}
 
