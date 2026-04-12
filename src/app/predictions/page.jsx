@@ -396,8 +396,12 @@ export default async function PredictionsPage() {
           {/* Recommended Combinations Section */}
           <CombinationSection />
           
-          {/* Toto Special Triple Section */}
-          <TotoSpecialTriple targetGames={gamesWithPicks.slice(0, 3)} />
+          {/* Toto Special Triple Section (Target Match Exact Mapping) */}
+          <TotoSpecialTriple targetGames={[
+            gamesWithPicks.find(g => (g.home?.name?.includes('LG') || g.away?.name?.includes('LG')) && (g.home?.name?.includes('SSG') || g.away?.name?.includes('SSG'))),
+            gamesWithPicks.find(g => (g.home?.name?.includes('KT') || g.away?.name?.includes('KT')) && (g.home?.name?.includes('두산') || g.away?.name?.includes('두산'))),
+            gamesWithPicks.find(g => (g.home?.name?.includes('키움') || g.away?.name?.includes('키움')) && (g.home?.name?.includes('롯데') || g.away?.name?.includes('롯데')))
+          ].filter(Boolean)} />
         </>
       )}
 

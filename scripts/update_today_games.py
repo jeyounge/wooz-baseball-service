@@ -55,9 +55,8 @@ def update_games(games):
         # For simulation, we'll fast forward based on random chance
         # Or you can replace this block with an actual API fetch later
         
-        rand_val = random.random()
-        
-        if rand_val < 0.1:
+        # rand_val < 0.1 for cancellation is removed to prevent overwriting real data with errors.
+        if False: # rand_val < 0.1:
             # 10% chance of sudden cancellation
             updates["status"] = "canceled"
             updates["cancel_reason"] = random.choice(["우천취소", "미세먼지취소", "그라운드사정"])

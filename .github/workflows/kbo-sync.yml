@@ -14,8 +14,8 @@ jobs:
     steps:
       - name: Trigger KBO Data Sync API
         run: |
-          curl -X GET "https://your-domain.vercel.app/api/sync/kbo-results" -H "Authorization: Bearer ${{ secrets.SYNC_TOKEN }}"
+          curl -X GET "https://wooz.z-labs.kr/api/sync/kbo-results" -H "Authorization: Bearer ${{ secrets.SYNC_TOKEN }}"
           
       - name: Trigger KBO Self-Learning (Feedback) API
         run: |
-          curl -X GET "https://your-domain.vercel.app/api/sync/kbo-feedback" -H "Authorization: Bearer ${{ secrets.SYNC_TOKEN }}"
+          curl -X GET "https://wooz.z-labs.kr/api/sync/kbo-feedback" -H "Authorization: Bearer ${{ secrets.SYNC_TOKEN }}"

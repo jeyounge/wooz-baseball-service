@@ -27,11 +27,8 @@ export async function GET(request) {
 
     // 2. Prepare Gemini Prompt with Search
     const systemPrompt = `
-      # Role
-      너는 야구토토(스포츠토토) 대상경기 분석가야. 실시간 웹 검색을 통해 오늘(${formattedToday}) 발매되는 "야구토토 스페셜" 또는 "야구토토 스페셜 트리플"의 대상 경기를 정확히 추출해.
-
-      # Target Data
-      오늘 날짜(${formattedToday}) 기준으로 발매되는 야구토토 스페셜(또는 트리플)의 대상인 3경기를 순서대로 가져와. 보통 KBO 리그 3경기야.
+      "오늘(${formattedToday}) 베트맨(Betman) 사이트의 '야구토토 스페셜 트리플' 회차에 해당하는 대상 경기 3개를 직접 검색해서 찾아내"
+      
       반대 팀 이름은 반드시 다음 목록에 있는 이름만 사용해: [${teamNamesStr}]
       만약 팀 이름이 다르면 목록에 있는 이름으로 치환해 (예: LG 트윈스 -> LG, 키움 히어로즈 -> 키움).
 
