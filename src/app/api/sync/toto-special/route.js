@@ -49,7 +49,7 @@ export async function GET(request) {
     const payload = {
       contents: [{ parts: [{ text: systemPrompt }] }],
       tools: [{ google_search: {} }],
-      generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
+      generationConfig: { temperature: 0.1 }
     };
 
     const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
