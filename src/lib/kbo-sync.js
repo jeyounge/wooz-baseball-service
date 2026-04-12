@@ -39,7 +39,9 @@ export async function syncGameStatusWithKbo(games, dateStr) {
           home: g.HOME_NM,
           awayPitcher: g.T_PIT_P_NM || '미정',
           homePitcher: g.B_PIT_P_NM || '미정',
-          stateCode: g.GAME_STATE_SC, // 0: 예정, 1: 진행, 2: 종료, 3: 취소
+          stateCode: g.GAME_STATE_SC, // 1: 예정, 2: 진행, 3: 종료, 4: 취소
+          awayScore: parseInt(g.T_SCORE_CN || 0, 10),
+          homeScore: parseInt(g.B_SCORE_CN || 0, 10),
           cancelReason: g.CANCEL_NM || '' 
         });
       });
@@ -68,12 +70,27 @@ export async function syncGameStatusWithKbo(games, dateStr) {
         const updatePayload = {};
         
         // GAME_STATE_SC from KBO: 1: 예정, 2: 진행, 3: 종료, 4: 취소
-        // If it's 4 (취소), mark as canceled
+        
+        // Canceled
         if (found.stateCode == '4' && g.status !== 'canceled') {
            updatePayload.status = 'canceled';
            updatePayload.cancel_reason = found.cancelReason || '취소';
            g.status = 'canceled';
            g.cancel_reason = found.cancelReason || '취소';
+        }
+        
+        // Live
+        if (found.stateCode == '2') {
+           if (g.status !== 'live') { updatePayload.status = 'live'; g.status = 'live'; }
+           if (g.home_score !== found.homeScore) { updatePayload.home_score = found.homeScore; g.home_score = found.homeScore; }
+           if (g.away_score !== found.awayScore) { updatePayload.away_score = found.awayScore; g.away_score = found.awayScore; }
+        }
+        
+        // Finished
+        if (found.stateCode == '3') {
+           if (g.status !== 'finished') { updatePayload.status = 'finished'; g.status = 'finished'; }
+           if (g.home_score !== found.homeScore) { updatePayload.home_score = found.homeScore; g.home_score = found.homeScore; }
+           if (g.away_score !== found.awayScore) { updatePayload.away_score = found.awayScore; g.away_score = found.awayScore; }
         }
         
         // 2. Sync Pitchers (if still scheduled)
