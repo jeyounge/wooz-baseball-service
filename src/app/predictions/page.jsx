@@ -160,13 +160,114 @@ export default async function PredictionsPage() {
                 <Zap size={14} className="group-hover:scale-125 transition-transform" /> AI 분석 시작하기
               </Link>
             </div>
-          )}
         </div>
       </div>
     );
   };
 
-  const CombinationSection = () => {
+  const TotoSpecialTriple = ({ targetGames }) => {
+    if (!targetGames || targetGames.length < 3) return null;
+
+    const getBands = (scoreStr) => {
+      const s = parseInt(scoreStr);
+      if (isNaN(s)) return ['0~1', '2~3'];
+      
+      const bands = ['0~1', '2~3', '4~5', '6~7', '8~9', '10+'];
+      if (s <= 1) return ['0~1', '2~3'];
+      if (s >= 10) return ['10+', '8~9'];
+      
+      const primaryIdx = Math.floor(s / 2);
+      let subIdx = s % 2 === 0 ? primaryIdx - 1 : primaryIdx + 1;
+      
+      return [bands[primaryIdx], bands[subIdx]];
+    };
+
+    const bandsList = ['0~1', '2~3', '4~5', '6~7', '8~9', '10+'];
+
+    return (
+      <div className="mt-20 relative p-[1px] rounded-3xl bg-gradient-to-r from-red-600 to-rose-500 shadow-2xl shadow-red-900/20 group">
+        <div className="bg-[#1A1E24] rounded-[23px] overflow-hidden border border-red-500/10 h-full">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-red-900/50 to-rose-900/50 p-6 sm:p-8 flex items-center justify-between border-b border-red-500/20">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-red-500/20 rounded-xl text-red-400"><TrendingUp size={28}/></div>
+              <div>
+                <h3 className="text-2xl font-black text-white italic tracking-tighter">야구토토 스페셜 트리플 <span className="text-red-400">AI 마킹 베스트</span></h3>
+                <p className="text-sm text-red-200/80 mt-1">예상 스코어 기반 확률업 64조합 (각 팀 2개 대역 마킹)</p>
+              </div>
+            </div>
+            <div className="hidden sm:flex flex-col text-right">
+              <span className="text-xs text-red-300 mb-1">권장 소액 배팅금액</span>
+              <span className="text-2xl font-black text-white">6,400<span className="text-base font-bold text-red-400">원</span></span>
+            </div>
+          </div>
+
+          {/* Body: 3 Games */}
+          <div className="p-6 sm:p-8 space-y-8">
+            {targetGames.map((game, idx) => {
+              const scores = (game.matchedPrediction?.predicted_score || "0-0").split('-');
+              let awayScore = scores[0];
+              let homeScore = scores[1];
+              
+              // Handle cases where prediction formatting might be different
+              if(!awayScore || !homeScore) { awayScore = "0"; homeScore = "0"; }
+
+              const awayBandsSet = new Set(getBands(awayScore));
+              const homeBandsSet = new Set(getBands(homeScore));
+
+              return (
+                <div key={idx} className="flex flex-col lg:flex-row gap-6 lg:items-center bg-slate-900/40 p-4 rounded-2xl border border-white/5">
+                  <div className="lg:w-48 shrink-0 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-black text-slate-400 text-lg">{idx + 1}</div>
+                    <div>
+                       <span className="text-xs text-slate-500 block mb-1">{new Date(game.game_date).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })}</span>
+                       <span className="text-sm font-bold text-white">{game.away?.name?.split(' ')[0]} <span className="text-slate-600 mx-1">vs</span> {game.home?.name?.split(' ')[0]}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 space-y-4">
+                    {/* Away Team */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="w-16 text-xs font-bold text-slate-400 uppercase tracking-wider">{game.away?.name?.split(' ')[0]}</div>
+                      <div className="flex-1 grid grid-cols-3 sm:grid-cols-6 gap-2">
+                        {bandsList.map(b => (
+                          <div key={b} className={`py-2 text-center rounded-lg border text-xs font-bold transition-all ${awayBandsSet.has(b) ? 'bg-red-500/20 border-red-500 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-slate-800/50 border-slate-700 text-slate-600'}`}>
+                            {b}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Home Team */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="w-16 text-xs font-bold text-slate-400 uppercase tracking-wider">{game.home?.name?.split(' ')[0]}</div>
+                      <div className="flex-1 grid grid-cols-3 sm:grid-cols-6 gap-2">
+                        {bandsList.map(b => (
+                          <div key={b} className={`py-2 text-center rounded-lg border text-xs font-bold transition-all ${homeBandsSet.has(b) ? 'bg-red-500/20 border-red-500 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-slate-800/50 border-slate-700 text-slate-600'}`}>
+                            {b}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="bg-slate-900/80 p-4 text-center border-t border-white/5 sm:hidden">
+             <span className="text-xs text-slate-400 mb-1 block">권장 소액 배팅금액</span>
+             <span className="text-xl font-black text-white">6,400<span className="text-xs font-bold text-slate-500 ml-1">원 (64조합)</span></span>
+          </div>
+
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-12 max-w-6xl">
+      {/* Page Header */}
     if (safeCombo.length === 0) return null;
 
     return (
@@ -296,6 +397,9 @@ export default async function PredictionsPage() {
 
           {/* Recommended Combinations Section */}
           <CombinationSection />
+
+          {/* Toto Special Triple Section */}
+          <TotoSpecialTriple targetGames={gamesWithPicks.slice(0, 3)} />
         </>
       )}
 
