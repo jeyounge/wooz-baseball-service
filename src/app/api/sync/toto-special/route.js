@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
 const API_KEY = process.env.GEMINI_API_KEY;
-const MODEL_ID = "gemini-3.1-flash-lite-preview"; 
+// Upgrade to the Pro model for deep grounded search capability
+const MODEL_ID = "gemini-2.5-pro"; 
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent?key=${API_KEY}`;
 
 function getKstNow() {
@@ -27,7 +28,8 @@ export async function GET(request) {
 
     // 2. Prepare Gemini Prompt with Search
     const systemPrompt = `
-      "오늘(${formattedToday}) 베트맨(Betman) 사이트의 '야구토토 스페셜 트리플' 회차에 해당하는 대상 경기 3개를 직접 검색해서 찾아내"
+      너는 스포츠토토 데이터 분석 전문가야. 구글 검색을 활용해서 ${formattedToday} 자로 발매된 "야구토토 스페셜" 또는 "야구토토 스페셜 트리플"의 실제 대상 경기 대진표 3개를 정확히 찾아내. 
+      아무 검색결과나 지어내지 말고 검색 결과(와이즈토토 등) 기반으로 실제 팩트만 가져와.
       
       반대 팀 이름은 반드시 다음 목록에 있는 이름만 사용해: [${teamNamesStr}]
       만약 팀 이름이 다르면 목록에 있는 이름으로 치환해 (예: LG 트윈스 -> LG, 키움 히어로즈 -> 키움).
@@ -62,7 +64,7 @@ export async function GET(request) {
        return NextResponse.json({ success: false, message: "오늘 대상 경기를 찾지 못했습니다.", data: null });
     }
 
-    // 3. Find matching games in our DB for today
+    // 3. Update matching games in our DB with toto_game_no
     const targetGameIds = [];
     for (const match of syncData.target_games) {
       const homeId = teamMap[match.home];
@@ -71,7 +73,7 @@ export async function GET(request) {
       if (homeId && awayId) {
         const { data: gameRecord } = await supabase
           .from('games')
-          .select('*')
+          .select('id')
           .eq('home_team_id', homeId)
           .eq('away_team_id', awayId)
           .gte('game_date', `${formattedToday}T00:00:00+09:00`)
@@ -79,10 +81,21 @@ export async function GET(request) {
           .maybeSingle();
 
         if (gameRecord) {
-          gameRecord.toto_game_no = match.game_no;
-          targetGameIds.push(gameRecord);
+          // Store the toto_game_no
+          await supabase.from('games').update({ toto_game_no: match.game_no }).eq('id', gameRecord.id);
+          targetGameIds.push(gameRecord.id);
         }
       }
+    }
+
+    // Reset others
+    if (targetGameIds.length > 0) {
+      await supabase
+        .from('games')
+        .update({ toto_game_no: null })
+        .gte('game_date', `${formattedToday}T00:00:00+09:00`)
+        .lte('game_date', `${formattedToday}T23:59:59+09:00`)
+        .not('id', 'in', `(${targetGameIds.join(',')})`);
     }
 
     return NextResponse.json({ 
