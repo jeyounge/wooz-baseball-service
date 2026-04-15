@@ -64,21 +64,42 @@ export async function POST(request) {
 
     if (!game) return NextResponse.json({ error: 'Game not found' }, { status: 404 });
 
-    // 2.1 최근 학습 포인트 조회
-    const { data: recentFeedback } = await supabase
-      .from('predictions_feedback')
-      .select('*, game:games!inner(home_team_id, away_team_id)')
-      .or(`home_team_id.eq.${game.home_team_id},away_team_id.eq.${game.home_team_id}`, { foreignTable: 'games' })
-      .order('created_at', { ascending: false })
-      .limit(5);
+    // 2.1 최근 학습 포인트 조회 (FK 없이 수동 2-step 쿼리)
+    // Step 1: 홈팀/원정팀이 포함된 최근 종료 경기 ID 조회
+    const { data: recentGames } = await supabase
+      .from('games')
+      .select('id')
+      .or(`home_team_id.eq.${game.home_team_id},away_team_id.eq.${game.home_team_id}`)
+      .eq('status', 'finished')
+      .order('game_date', { ascending: false })
+      .limit(10);
 
     let learningContext = "";
-    if (recentFeedback && recentFeedback.length > 0) {
-      learningContext = "\n# Your Past Learning Points (자기 학습 피드백):\n";
-      recentFeedback.forEach((fb, idx) => {
-        learningContext += `${idx + 1}. [복기 내용]: ${fb.feedback_content.substring(0, 150)}...\n   - 피드백: ${JSON.stringify(fb.learning_points)}\n`;
-      });
+    if (recentGames && recentGames.length > 0) {
+      const recentGameIds = recentGames.map(g => g.id);
+
+      // Step 2: 해당 게임들의 복기 피드백 조회
+      const { data: recentFeedback } = await supabase
+        .from('predictions_feedback')
+        .select('game_id, feedback_content, learning_points, pick_1_correct, pick_2_correct, confidence_score')
+        .in('game_id', recentGameIds)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (recentFeedback && recentFeedback.length > 0) {
+        learningContext = "\n# Your Past Learning Points (자기 학습 피드백 - 홈팀 최근 경기 기반):\n";
+        recentFeedback.forEach((fb, idx) => {
+          const p1 = fb.pick_1_correct ? "✅적중" : "❌빗나감";
+          const lp = fb.learning_points || {};
+          learningContext += `${idx + 1}. [Game ${fb.game_id}] 1픽 ${p1} | 신뢰도 ${fb.confidence_score || '-'}점\n`;
+          learningContext += `   - 투수: ${lp.pitching || '-'}\n`;
+          learningContext += `   - 타선: ${lp.batting || '-'}\n`;
+          learningContext += `   - 불펜: ${lp.bullpen || '-'}\n`;
+          if (lp.general) learningContext += `   - 기타: ${lp.general}\n`;
+        });
+      }
     }
+
 
     // 3. User Defined Premium Prompt
     const systemPrompt = `
