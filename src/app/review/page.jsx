@@ -105,17 +105,10 @@ function BoxScoreCard({ title, starterStats, bullpenStats, battingStats, accentC
 }
 
 export default async function ReviewPage() {
-  // 복기 피드백 + 연결된 경기 정보 + 박스스코어 + 예측 조회
+  // 1단계: predictions_feedback 단독 조회 (FK 조인 없이)
   const { data: feedbacks, error } = await supabase
     .from('predictions_feedback')
-    .select(`
-      *,
-      game:games!inner(
-        id, game_date, home_score, away_score, home_pitcher, away_pitcher, status,
-        home:teams!home_team_id(name),
-        away:teams!away_team_id(name)
-      )
-    `)
+    .select('*')
     .order('created_at', { ascending: false })
     .limit(30);
 
@@ -123,19 +116,28 @@ export default async function ReviewPage() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="bg-red-900/30 border border-red-500/30 text-red-300 p-4 rounded-xl flex items-center gap-2">
-          <AlertCircle size={18} /> 복기 데이터를 불러오는 데 실패했습니다.
+          <AlertCircle size={18} /> 복기 데이터를 불러오는 데 실패했습니다. ({error.message})
         </div>
       </div>
     );
   }
 
-  // 게임 ID 목록으로 예측 + 박스스코어 일괄 조회
+  // 2단계: game_id 목록으로 games / predictions / boxScores 병렬 조회
   const gameIds = feedbacks?.map(f => f.game_id) || [];
-  const [{ data: predictions }, { data: boxScores }] = await Promise.all([
+
+  const [{ data: games }, { data: predictions }, { data: boxScores }] = await Promise.all([
+    supabase
+      .from('games')
+      .select(`id, game_date, home_score, away_score, home_pitcher, away_pitcher, status,
+        home:teams!home_team_id(name), away:teams!away_team_id(name)`)
+      .in('id', gameIds),
     supabase.from('predictions').select('*').in('game_id', gameIds.map(String)),
     supabase.from('game_box_scores').select('*').in('game_id', gameIds)
   ]);
 
+  // 3단계: JS에서 머지
+  const gameMap = {};
+  (games || []).forEach(g => { gameMap[g.id] = g; });
   const predMap = {};
   (predictions || []).forEach(p => { predMap[p.game_id] = p; });
   const boxMap = {};
@@ -202,7 +204,7 @@ export default async function ReviewPage() {
       ) : (
         <div className="space-y-8">
           {feedbacks.map(fb => {
-            const game = fb.game;
+            const game = gameMap[fb.game_id];
             const pred = predMap[fb.game_id];
             const box = boxMap[fb.game_id];
             const homeName = game?.home?.name?.split(' ')[0] || '-';
