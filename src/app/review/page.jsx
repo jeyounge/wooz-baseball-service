@@ -4,6 +4,7 @@ import {
   CalendarDays, Target, BarChart2, Zap, ChevronRight, Star
 } from 'lucide-react';
 import Link from 'next/link';
+import ReviewTrigger from '@/components/review/ReviewTrigger';
 
 export const dynamic = 'force-dynamic';
 
@@ -167,6 +168,9 @@ export default async function ReviewPage() {
           AI가 예측한 내용과 실제 경기 결과(선발 투수 퍼포먼스, 타선 기록 등)를 대조하여 스스로 학습합니다.
         </p>
       </div>
+
+      {/* 복기 실행 패널 (관리자용 트리거) */}
+      <ReviewTrigger />
 
       {/* 통계 요약 카드 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
