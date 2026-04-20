@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { User, Activity, CalendarDays, Award, MessageSquare, Trophy, Menu, X, FlaskConical } from 'lucide-react';
+import { User, Activity, CalendarDays, Award, MessageSquare, Trophy, Menu, X, FlaskConical, TrendingUp } from 'lucide-react';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -14,6 +14,7 @@ export default function Header() {
     { href: '/standings', label: '리그 순위', icon: <Trophy size={18} />, color: 'text-amber-400' },
     { href: '/predictions', label: '우제트 픽', icon: <Award size={18} />, color: 'text-rose-500' },
     { href: '/review', label: 'AI 복기', icon: <FlaskConical size={18} />, color: 'text-emerald-400' },
+    { href: '/weekly', label: '위클리 분석', icon: <TrendingUp size={18} />, color: 'text-fuchsia-400' },
     { href: '/community', label: '커뮤니티', icon: <MessageSquare size={18} />, color: 'text-indigo-400' },
   ];
 

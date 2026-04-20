@@ -62,25 +62,66 @@ export default async function PredictionsPage() {
     };
   }) || [];
 
-  // 4. Calculate Combinations (추천 조합)
+  // 4. Calculate Combinations (추천 조합) - Checking Snapshot DB First
   const analyzedGames = gamesWithPicks.filter(g => g.hasAnalysed);
-  
-  // Sort by confidence (descending)
-  const sortedGames = [...analyzedGames].sort((a, b) => {
-    const confA = Math.max(a.matchedPrediction?.home_win_prob || 0, a.matchedPrediction?.away_win_prob || 0);
-    const confB = Math.max(b.matchedPrediction?.home_win_prob || 0, b.matchedPrediction?.away_win_prob || 0);
-    return confB - confA;
-  });
 
-  // 안전 조합 (Top 3)
-  const safeCombo = sortedGames.slice(0, 3);
-  
-  // 고배당 조합 (4~5 games) - 역순으로 정렬하여 신뢰도가 상대적으로 낮은(배당이 높은) 경기들 위주로 5경기 픽 후 시간순 정렬
+  const { data: existingCombo } = await supabase
+    .from('daily_combinations')
+    .select('*')
+    .eq('target_date', todayStr)
+    .maybeSingle();
+
+  let safeCombo = [];
   let highYieldCombo = [];
-  if (sortedGames.length >= 4) {
-    highYieldCombo = [...sortedGames].reverse().slice(0, 5).sort((a, b) => new Date(a.game_date) - new Date(b.game_date));
-  } else {
-    highYieldCombo = [...sortedGames]; // 3경기 이하면 있는 그대로 가져감
+
+  if (existingCombo) {
+    // 4-1. Load from Snapshot
+    safeCombo = existingCombo.safe_combo.map(c => {
+      const g = gamesWithPicks.find(g => g.id === c.game_id);
+      return g ? { ...g, snapshotPick: c } : null;
+    }).filter(Boolean);
+
+    highYieldCombo = existingCombo.high_yield_combo.map(c => {
+      const g = gamesWithPicks.find(g => g.id === c.game_id);
+      return g ? { ...g, snapshotPick: c } : null;
+    }).filter(Boolean);
+  } else if (analyzedGames.length > 0) {
+    // 4-2. Generate & Save New Snapshot
+    const sortedGames = [...analyzedGames].sort((a, b) => {
+      const confA = Math.max(a.matchedPrediction?.home_win_prob || 0, a.matchedPrediction?.away_win_prob || 0);
+      const confB = Math.max(b.matchedPrediction?.home_win_prob || 0, b.matchedPrediction?.away_win_prob || 0);
+      return confB - confA;
+    });
+
+    const generatedSafe = sortedGames.slice(0, 3);
+    const safePayload = generatedSafe.map(g => {
+      const conf = Math.max(g.matchedPrediction?.home_win_prob || 0, g.matchedPrediction?.away_win_prob || 0);
+      return { game_id: g.id, pick: g.matchedPrediction?.pick_1, confidence: conf };
+    });
+
+    let generatedHighYield = [];
+    if (sortedGames.length >= 4) {
+      generatedHighYield = [...sortedGames].reverse().slice(0, 5).sort((a, b) => new Date(a.game_date) - new Date(b.game_date));
+    } else {
+      generatedHighYield = [...sortedGames];
+    }
+
+    const hyPayload = generatedHighYield.map((g, i) => {
+      const isEven = i % 2 === 0;
+      const pick = isEven ? (g.matchedPrediction?.pick_3 || g.matchedPrediction?.pick_1) : (g.matchedPrediction?.pick_2 || g.matchedPrediction?.pick_1);
+      const conf = Math.max(g.matchedPrediction?.home_win_prob || 0, g.matchedPrediction?.away_win_prob || 0);
+      return { game_id: g.id, pick, confidence: conf, type: isEven ? '핸디' : '언옵' };
+    });
+
+    // Fire and Forget Insert (Avoid blocking page load if error occurs)
+    supabase.from('daily_combinations').insert({
+      target_date: todayStr,
+      safe_combo: safePayload,
+      high_yield_combo: hyPayload
+    }).then(({error}) => { if(error) console.error("Failed to save combo snapshot:", error); });
+
+    safeCombo = generatedSafe.map((g, i) => ({ ...g, snapshotPick: safePayload[i] }));
+    highYieldCombo = generatedHighYield.map((g, i) => ({ ...g, snapshotPick: hyPayload[i] }));
   }
 
   // Helper: Get pick color
@@ -191,13 +232,14 @@ export default async function PredictionsPage() {
                </div>
                <div className="space-y-3">
                  {safeCombo.map((game, i) => {
-                   const conf = Math.max(game.matchedPrediction?.home_win_prob || 0, game.matchedPrediction?.away_win_prob || 0);
+                   const conf = game.snapshotPick?.confidence || Math.max(game.matchedPrediction?.home_win_prob || 0, game.matchedPrediction?.away_win_prob || 0);
+                   const pick = game.snapshotPick?.pick || game.matchedPrediction?.pick_1;
                    return (
                    <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-slate-900/50 border border-white/5 hover:bg-slate-800/80 transition-colors">
                       <div className="flex flex-col gap-1">
                         <span className="text-[11px] text-slate-500 mb-0.5">{game.away?.name?.split(' ')[0]} <span className="text-[9px]">vs</span> {game.home?.name?.split(' ')[0]}</span>
-                        <span className={`text-sm sm:text-base font-bold ${getPickColor(game.matchedPrediction?.pick_1)}`}>
-                          {game.matchedPrediction?.pick_1}
+                        <span className={`text-sm sm:text-base font-bold ${getPickColor(pick)}`}>
+                          {pick}
                         </span>
                       </div>
                       <div className="text-right">
@@ -222,16 +264,16 @@ export default async function PredictionsPage() {
                </div>
                <div className="space-y-3">
                  {highYieldCombo.map((game, i) => {
-                   const conf = Math.max(game.matchedPrediction?.home_win_prob || 0, game.matchedPrediction?.away_win_prob || 0);
-                   const isEven = i % 2 === 0;
-                   const highYieldPick = isEven ? (game.matchedPrediction?.pick_3 || game.matchedPrediction?.pick_1) : (game.matchedPrediction?.pick_2 || game.matchedPrediction?.pick_1);
+                   const conf = game.snapshotPick?.confidence || Math.max(game.matchedPrediction?.home_win_prob || 0, game.matchedPrediction?.away_win_prob || 0);
+                   const highYieldPick = game.snapshotPick?.pick || (game.matchedPrediction?.pick_3 || game.matchedPrediction?.pick_1);
+                   const type = game.snapshotPick?.type || (i % 2 === 0 ? '핸디' : '언옵');
                    
                    return (
                    <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-slate-900/50 border border-white/5 hover:bg-slate-800/80 transition-colors">
                       <div className="flex flex-col gap-1">
                         <span className="text-[11px] text-slate-500 mb-0.5">{game.away?.name?.split(' ')[0]} <span className="text-[9px]">vs</span> {game.home?.name?.split(' ')[0]}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded font-bold uppercase">{isEven ? '핸디' : '언옵'}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded font-bold uppercase">{type}</span>
                           <span className={`text-sm sm:text-base font-bold ${getPickColor(highYieldPick)}`}>
                             {highYieldPick}
                           </span>
